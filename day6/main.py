@@ -4,6 +4,8 @@ from enum import Enum
 from typing import Literal, Optional
 from tqdm import trange
 from rich import print
+import sys
+sys.setrecursionlimit(10**5)
 
 OBSTACLES = set(["#", "O"])
 GUARD = ["^", "v", ">", "<"]
@@ -52,7 +54,7 @@ def is_inbound(content: list[list[str]], pos: tuple[int, int]):
     return True
 
 
-def run(content: list[list[str]], current: Optional[tuple[int, int]] = None, max_depth: int = 100):
+def run(content: list[list[str]], current: Optional[tuple[int, int]] = None):
     # Init variables
     if current is None:
         current, new = find_guard(content)
@@ -70,28 +72,20 @@ def run(content: list[list[str]], current: Optional[tuple[int, int]] = None, max
     if not content[new[0]][new[1]] == "#":
         content[new[0]][new[1]] = content[current[0]][current[1]]
         content[current[0]][current[1]] = "X"
-        return run(content, new, max_depth=max_depth-1)
+        return run(content, new)
     else:
         content[current[0]][current[1]] = rotate_right(content[current[0]][current[1]])
         
-        return run(content, current, max_depth=max_depth-1)
+        return run(content, current)
 
 
 
 def is_stucking_position(content: list[list[str]]):
-    seen_position = set()
-    running = True
-    i=0
-    pos = None
-    while running:
-        pos = run(content, pos)
-        if pos is None:
-            return False, i
-        if pos in seen_position:
-            break
-        seen_position.add(pos)
-        i+=1
-    return True, i
+    try:
+        run(content)
+        return False
+    except RecursionError:
+        return True
 
 
 
@@ -111,14 +105,25 @@ for line in data:
 # Part One
 i=0
 pos = None
-import sys
-sys.setrecursionlimit(10**5)
-run(content)
+temp = deepcopy(content)
+
+run(temp)
 
 sum = 0
-for i in range(len(content)):
-    for j in range(len(content[0])):
-        if content[i][j] == "X":
+for i in range(len(temp)):
+    for j in range(len(temp[0])):
+        if temp[i][j] == "X":
             sum+=1
 print(sum)
 
+
+# Part Two
+sum = 0
+for i in trange(len(content)):
+    for j in range(len(content[0])):
+        new_content = deepcopy(content)
+        new_content[i][j] = "#"
+        if is_stucking_position(new_content):
+            sum+=1
+
+print(sum)
