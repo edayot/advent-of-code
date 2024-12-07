@@ -1,26 +1,37 @@
 
+from copy import deepcopy
 from enum import Enum
-from typing import Literal
-import numpy as np
+from typing import Literal, Optional
+from tqdm import trange
+from rich import print
+
+OBSTACLES = set(["#", "O"])
+GUARD = ["^", "v", ">", "<"]
+PATH = "X"
 
 
-def find_guard_new_position(matrix: np.array) -> tuple[tuple[int, int], tuple[int, int]]:
-    for i in range(matrix.shape[0]):
-        for j in range(matrix.shape[1]):
-            match matrix[i, j]:
-                case "^":
-                    return (i, j), (i-1, j)
-                case "v":
-                    return (i, j), (i+1, j)
-                case ">":
-                    return (i, j), (i, j+1)
-                case "<":
-                    return (i, j), (i, j-1)
-                case _:
-                    continue
+def find_guard(content: list[list[str]]) -> tuple[tuple[int, int] | None, tuple[int, int] | None]:
+    for i, line in enumerate(content):
+        for j, value in enumerate(line):
+            if value in GUARD:
+                return (i, j), find_new_pos(i, j, value)
     return None, None
 
-def rotate_right(direction: Literal["^", "v", ">", "<"]) -> Literal["^", "v", ">", "<"]:
+def find_new_pos(i: int, j: int, value: str):
+    match value:
+        case "^":
+            return (i-1, j)
+        case "v":
+            return (i+1, j)
+        case ">":
+            return (i, j+1)
+        case "<":
+            return (i, j-1)
+        
+    raise ValueError(value)
+
+
+def rotate_right(direction: Literal["^", "v", ">", "<"] | str) -> Literal["^", "v", ">", "<"]:
     match direction:
         case "^":
             return ">"
@@ -33,53 +44,81 @@ def rotate_right(direction: Literal["^", "v", ">", "<"]) -> Literal["^", "v", ">
         case _:
             raise ValueError("Unknow direction, {direction}")
 
-def is_inbound(matrix: np.array, pos: tuple[int, int]):
-    if pos[0] >= matrix.shape[0] or pos[0] < 0:
+def is_inbound(content: list[list[str]], pos: tuple[int, int]):
+    if pos[0] >= len(content) or pos[0] < 0:
         return False
-    if pos[1] >= matrix.shape[1] or pos[1] < 0:
+    if pos[1] >= len(content[0]) or pos[1] < 0:
         return False
     return True
 
 
-def tour(matrix: np.array):
-    current, new = find_guard_new_position(matrix)
+def run(content: list[list[str]], current: Optional[tuple[int, int]] = None, max_depth: int = 100):
+    # Init variables
+    if current is None:
+        current, new = find_guard(content)
+    else: 
+        new = find_new_pos(current[0], current[1], content[current[0]][current[1]])
+
+    # Stop condition
     if not current or not new:
-        return False
-    if not is_inbound(matrix, new):
-        matrix[current] = "X"
-        return False
-    if not matrix[new] == "#":
-        matrix[new] = matrix[current]
-        matrix[current] = "X"
+        return 
+    if not is_inbound(content, new):
+        content[current[0]][current[1]] = "X"
+        return 
+    
+    # iterating
+    if not content[new[0]][new[1]] == "#":
+        content[new[0]][new[1]] = content[current[0]][current[1]]
+        content[current[0]][current[1]] = "X"
+        return run(content, new, max_depth=max_depth-1)
     else:
-        matrix[current] = rotate_right(matrix[current])
-    return True
+        content[current[0]][current[1]] = rotate_right(content[current[0]][current[1]])
+        
+        return run(content, current, max_depth=max_depth-1)
+
+
+
+def is_stucking_position(content: list[list[str]]):
+    seen_position = set()
+    running = True
+    i=0
+    pos = None
+    while running:
+        pos = run(content, pos)
+        if pos is None:
+            return False, i
+        if pos in seen_position:
+            break
+        seen_position.add(pos)
+        i+=1
+    return True, i
+
 
 
 
 
 with open('day6/input.txt') as f:
-    content = f.read().splitlines()
+    data = f.read().splitlines()
+
+content : list[list[str]] = []
+for line in data:
+    content.append([])
+    for char in line:
+        content[-1].append(char)
 
 
-matrix = np.zeros((len(content), len(content[0])), dtype=str)
-for i, line in enumerate(content):
-    for j, char in enumerate(line):
-        matrix[i, j] = char
 
-
-running = True
+# Part One
 i=0
-while running:
-    # print(matrix)
-    # input(f"Press enter for next tour ({i}/?)")
-    running = tour(matrix)
-    i+=1
-print(matrix)
+pos = None
+import sys
+sys.setrecursionlimit(10**5)
+run(content)
 
 sum = 0
-for i in range(matrix.shape[0]):
-    for j in range(matrix.shape[1]):
-        if matrix[i, j] == "X":
+for i in range(len(content)):
+    for j in range(len(content[0])):
+        if content[i][j] == "X":
             sum+=1
 print(sum)
+
