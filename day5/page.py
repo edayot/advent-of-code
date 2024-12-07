@@ -1,5 +1,4 @@
 from typing import Any, ClassVar, Generator
-from networkx import selfloop_edges
 from pydantic import BaseModel, Field
 
 class Page(BaseModel):
