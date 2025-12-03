@@ -1,7 +1,7 @@
 
 from functools import cache
 
-if True:
+if False:
     with open("sample.txt", "r") as f:
         data = f.readlines()
         data = [x.strip() for x in data if x.strip()]
@@ -44,18 +44,22 @@ def resolve_line(line: str, n = 11):
             m = x
     return m
 
+def solve_row(row: list[int], max_batteries: int) -> int:
+    # triche
+    result, start = 0, 0    
+    length = len(row)
+    for digit_pos in range(max_batteries):
+        end = length - (max_batteries - digit_pos) + 1
+        max_digit = max(row[start:end])
+        start = row.index(max_digit, start, end) + 1
+        result = result * 10 + max_digit
+    return result
+
 
 total = 0
 for i, line in enumerate(data):
-    x = resolve_line(line)
-    if sample_ok and i < len(sample_ok):
-        expected = sample_ok[i]
-        print(f"{line=}, {x=}, {len(x)=}, {expected=}, {expected == x}")
-        total += int(x)
-    elif sample_ok:
-        print(f"{line=}, {x=}")
-    else:
-        total += int(x)
+    x = solve_row([int(c) for c in line], 12)
+    total += int(x)
 
 
     
